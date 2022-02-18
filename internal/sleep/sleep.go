@@ -6,6 +6,6 @@ import (
 )
 
 func Random() {
-	ms := rand.Intn(10) * 100
+	ms := rand.Intn(50) * 100
 	time.Sleep(time.Millisecond * time.Duration(ms))
 }

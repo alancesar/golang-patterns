@@ -38,7 +38,7 @@ func TestWorker_Work(t *testing.T) {
 			},
 			args: args{
 				ctx:     context.Background(),
-				items:   []interface{}{rand.Intn(10), rand.Intn(10), rand.Intn(10), rand.Intn(10), rand.Intn(10)},
+				items:   []interface{}{rand.Intn(50), rand.Intn(40), rand.Intn(30), rand.Intn(20), rand.Intn(10)},
 				counter: 0,
 			},
 			want: 5,
