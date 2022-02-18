@@ -29,33 +29,33 @@ type (
 	}
 )
 
-func championshipGetter() string {
+func championshipGetter() (string, error) {
 	sleep.Random()
-	return "Champions League"
+	return "Champions League", nil
 }
 
-func teamGetter(id int) Team {
+func teamGetter(id int) (Team, error) {
 	sleep.Random()
 	if id == 1 {
 		return Team{
 			Name: "AFC Ajax",
 			City: "Amsterdam",
-		}
+		}, nil
 	}
 
 	return Team{
 		Name: "Real Madrid CF",
 		City: "Madrid",
-	}
+	}, nil
 }
 
-func stadiumGetter() Stadium {
+func stadiumGetter() (Stadium, error) {
 	sleep.Random()
 	return Stadium{
 		Name:     "Wembley Stadium",
 		City:     "London",
 		Capacity: 90000,
-	}
+	}, nil
 }
 
 func main() {
@@ -63,22 +63,22 @@ func main() {
 
 	err := fetcher.New().
 		With(func() (interface{}, error) {
-			return stadiumGetter(), nil
+			return stadiumGetter()
 		}, func(value interface{}) {
 			match.Stadium = value.(Stadium)
 		}).
 		With(func() (interface{}, error) {
-			return championshipGetter(), nil
+			return championshipGetter()
 		}, func(value interface{}) {
 			match.Championship = value.(string)
 		}).
 		With(func() (interface{}, error) {
-			return teamGetter(1), nil
+			return teamGetter(1)
 		}, func(value interface{}) {
 			match.Home = value.(Team)
 		}).
 		With(func() (interface{}, error) {
-			return teamGetter(2), nil
+			return teamGetter(2)
 		}, func(value interface{}) {
 			match.Away = value.(Team)
 		}).
