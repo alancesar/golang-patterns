@@ -5,79 +5,80 @@ import (
 )
 
 type (
-	Event struct {
-		Name string
-		Data interface{}
+	incoming struct {
+		index   int
+		payload interface{}
 	}
 
-	ReducerFn func(locker sync.Locker, event Event)
+	ProducerFn func() interface{}
+	ConsumerFn func(interface{})
 
 	Fetcher struct {
-		reducerFn   ReducerFn
-		dispatchers []<-chan Event
+		producers []<-chan incoming
+		consumers []ConsumerFn
 	}
 )
 
-func New(reducer ReducerFn) *Fetcher {
-	return &Fetcher{
-		reducerFn: reducer,
-	}
+func New() *Fetcher {
+	return &Fetcher{}
 }
 
-func (f *Fetcher) AddProducer(name string, fn func() interface{}) *Fetcher {
-	producer := f.createProducer(name, fn)
-	f.dispatchers = append(f.dispatchers, producer)
+func (f *Fetcher) With(producerFn ProducerFn, consumerFn ConsumerFn) *Fetcher {
+	producer := f.prepare(producerFn)
+	f.producers = append(f.producers, producer)
+	f.consumers = append(f.consumers, consumerFn)
 	return f
 }
 
-func (f Fetcher) Fetch(locker sync.Locker) {
-	incoming := f.merge(f.dispatchers)
+func (f Fetcher) Fetch(target sync.Locker) {
+	consumers := f.fanIn(f.producers)
 
-	reduce := func(event Event) {
-		defer locker.Unlock()
-		locker.Lock()
-		f.reducerFn(locker, event)
-	}
-
-	for input := range incoming {
-		reduce(input)
+	for input := range consumers {
+		f.safeMerge(target, input)
 	}
 }
 
-func (Fetcher) createProducer(name string, fn func() interface{}) <-chan Event {
-	c := make(chan Event)
+func (f Fetcher) safeMerge(target sync.Locker, incoming incoming) {
+	defer target.Unlock()
+	target.Lock()
+	f.consumers[incoming.index](incoming.payload)
+}
+
+func (f Fetcher) prepare(fn ProducerFn) <-chan incoming {
+	c := make(chan incoming)
+	index := len(f.producers)
 
 	go func() {
 		defer close(c)
-		c <- Event{
-			Name: name,
-			Data: fn(),
+		c <- incoming{
+			index:   index,
+			payload: fn(),
 		}
 	}()
 
 	return c
 }
 
-func (Fetcher) merge(dispatchers []<-chan Event) <-chan Event {
+func (Fetcher) fanIn(producers []<-chan incoming) <-chan incoming {
 	var wg sync.WaitGroup
-	wg.Add(len(dispatchers))
-	dispatcher := make(chan Event)
+	wg.Add(len(producers))
+	out := make(chan incoming)
 
-	fn := func(incoming <-chan Event) {
+	fn := func(incoming <-chan incoming) {
 		for in := range incoming {
-			dispatcher <- in
+			out <- in
 		}
 		wg.Done()
 	}
 
-	for _, c := range dispatchers {
+	for _, c := range producers {
 		go fn(c)
 	}
 
 	go func() {
 		wg.Wait()
-		close(dispatcher)
+		close(out)
 	}()
 
-	return dispatcher
+	return out
 }

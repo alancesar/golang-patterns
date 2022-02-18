@@ -66,26 +66,27 @@ func stadiumGetter() Stadium {
 func main() {
 	var match Match
 
-	fetcher.New(func(locker sync.Locker, event fetcher.Event) {
-		switch event.Name {
-		case "STADIUM":
-			match.Stadium = event.Data.(Stadium)
-		case "CHAMPIONSHIP":
-			match.Championship = event.Data.(string)
-		case "HOME_TEAM":
-			match.Home = event.Data.(Team)
-		case "AWAY_TEAM":
-			match.Away = event.Data.(Team)
-		}
-	}).AddProducer("STADIUM", func() interface{} {
-		return stadiumGetter()
-	}).AddProducer("CHAMPIONSHIP", func() interface{} {
-		return championshipGetter()
-	}).AddProducer("HOME_TEAM", func() interface{} {
-		return teamGetter(1)
-	}).AddProducer("AWAY_TEAM", func() interface{} {
-		return teamGetter(2)
-	}).Fetch(&match)
+	fetcher.New().
+		With(func() interface{} {
+			return stadiumGetter()
+		}, func(value interface{}) {
+			match.Stadium = value.(Stadium)
+		}).
+		With(func() interface{} {
+			return championshipGetter()
+		}, func(value interface{}) {
+			match.Championship = value.(string)
+		}).
+		With(func() interface{} {
+			return teamGetter(1)
+		}, func(value interface{}) {
+			match.Home = value.(Team)
+		}).
+		With(func() interface{} {
+			return teamGetter(2)
+		}, func(value interface{}) {
+			match.Away = value.(Team)
+		}).Fetch(&match)
 
 	fmt.Println(&match)
 }
