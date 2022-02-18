@@ -10,17 +10,20 @@ type (
 		payload interface{}
 	}
 
-	ProducerFn func() interface{}
+	ProducerFn func() (interface{}, error)
 	ConsumerFn func(interface{})
 
 	Fetcher struct {
 		producers []<-chan incoming
 		consumers []ConsumerFn
+		errChan   chan error
 	}
 )
 
 func New() *Fetcher {
-	return &Fetcher{}
+	return &Fetcher{
+		errChan: make(chan error, 1),
+	}
 }
 
 func (f *Fetcher) With(producerFn ProducerFn, consumerFn ConsumerFn) *Fetcher {
@@ -30,12 +33,29 @@ func (f *Fetcher) With(producerFn ProducerFn, consumerFn ConsumerFn) *Fetcher {
 	return f
 }
 
-func (f Fetcher) Fetch(target sync.Locker) {
-	consumers := f.fanIn(f.producers)
+func (f Fetcher) Fetch(target sync.Locker) error {
+	var (
+		wg  sync.WaitGroup
+		err error
+	)
 
-	for input := range consumers {
-		f.safeMerge(target, input)
-	}
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		err = <-f.errChan
+	}()
+
+	go func() {
+		defer wg.Done()
+		consumers := f.fanIn(f.producers)
+		for input := range consumers {
+			f.safeMerge(target, input)
+		}
+	}()
+
+	wg.Wait()
+	return err
 }
 
 func (f Fetcher) safeMerge(target sync.Locker, incoming incoming) {
@@ -50,16 +70,22 @@ func (f Fetcher) prepare(fn ProducerFn) <-chan incoming {
 
 	go func() {
 		defer close(c)
+		payload, err := fn()
+		if err != nil {
+			f.errChan <- err
+			return
+		}
+
 		c <- incoming{
 			index:   index,
-			payload: fn(),
+			payload: payload,
 		}
 	}()
 
 	return c
 }
 
-func (Fetcher) fanIn(producers []<-chan incoming) <-chan incoming {
+func (f Fetcher) fanIn(producers []<-chan incoming) <-chan incoming {
 	var wg sync.WaitGroup
 	wg.Add(len(producers))
 	out := make(chan incoming)
@@ -78,6 +104,7 @@ func (Fetcher) fanIn(producers []<-chan incoming) <-chan incoming {
 	go func() {
 		wg.Wait()
 		close(out)
+		close(f.errChan)
 	}()
 
 	return out

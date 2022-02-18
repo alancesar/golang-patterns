@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"golang-patterns/fetcher"
-	"math/rand"
+	"golang-patterns/internal/sleep"
+	"log"
 	"sync"
-	"time"
 )
 
 type (
@@ -29,18 +29,13 @@ type (
 	}
 )
 
-func randomSleep() {
-	ms := rand.Intn(10) * 100
-	time.Sleep(time.Millisecond * time.Duration(ms))
-}
-
 func championshipGetter() string {
-	randomSleep()
+	sleep.Random()
 	return "Champions League"
 }
 
 func teamGetter(id int) Team {
-	randomSleep()
+	sleep.Random()
 	if id == 1 {
 		return Team{
 			Name: "AFC Ajax",
@@ -55,7 +50,7 @@ func teamGetter(id int) Team {
 }
 
 func stadiumGetter() Stadium {
-	randomSleep()
+	sleep.Random()
 	return Stadium{
 		Name:     "Wembley Stadium",
 		City:     "London",
@@ -66,27 +61,32 @@ func stadiumGetter() Stadium {
 func main() {
 	var match Match
 
-	fetcher.New().
-		With(func() interface{} {
-			return stadiumGetter()
+	err := fetcher.New().
+		With(func() (interface{}, error) {
+			return stadiumGetter(), nil
 		}, func(value interface{}) {
 			match.Stadium = value.(Stadium)
 		}).
-		With(func() interface{} {
-			return championshipGetter()
+		With(func() (interface{}, error) {
+			return championshipGetter(), nil
 		}, func(value interface{}) {
 			match.Championship = value.(string)
 		}).
-		With(func() interface{} {
-			return teamGetter(1)
+		With(func() (interface{}, error) {
+			return teamGetter(1), nil
 		}, func(value interface{}) {
 			match.Home = value.(Team)
 		}).
-		With(func() interface{} {
-			return teamGetter(2)
+		With(func() (interface{}, error) {
+			return teamGetter(2), nil
 		}, func(value interface{}) {
 			match.Away = value.(Team)
-		}).Fetch(&match)
+		}).
+		Fetch(&match)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	fmt.Println(&match)
 }

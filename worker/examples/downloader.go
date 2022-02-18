@@ -3,10 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"golang-patterns/internal/sleep"
 	"golang-patterns/worker"
 	"log"
-	"math/rand"
-	"time"
 )
 
 type (
@@ -15,14 +14,9 @@ type (
 	}
 )
 
-func randomSleep() {
-	ms := rand.Intn(50) * 100
-	time.Sleep(time.Millisecond * time.Duration(ms))
-}
-
 func (d Download) Download(_ context.Context) {
 	log.Printf("starting download from %s\n", d.url)
-	randomSleep()
+	sleep.Random()
 	log.Printf("dowloaded from %s successfuly\n", d.url)
 }
 
