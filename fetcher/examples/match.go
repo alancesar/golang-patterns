@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"golang-patterns/fetch"
+	"golang-patterns/fetcher"
 	"math/rand"
 	"sync"
 	"time"
@@ -66,7 +66,7 @@ func stadiumGetter() Stadium {
 func main() {
 	var match Match
 
-	fetch.New(func(locker sync.Locker, event fetch.Event) {
+	fetcher.New(func(locker sync.Locker, event fetcher.Event) {
 		switch event.Name {
 		case "STADIUM":
 			match.Stadium = event.Data.(Stadium)
