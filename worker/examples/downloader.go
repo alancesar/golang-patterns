@@ -38,6 +38,6 @@ func main() {
 		download.Download(ctx)
 	}
 
-	w := worker.New[Download](downloader, 5)
+	w := worker.New(downloader, 5)
 	w.Work(context.Background(), downloads)
 }

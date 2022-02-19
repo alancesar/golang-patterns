@@ -47,7 +47,7 @@ func TestWorker_Work(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			counter := tt.args.counter
-			w := New[int](tt.fields.fn(&counter), tt.fields.buffer)
+			w := New(tt.fields.fn(&counter), tt.fields.buffer)
 			w.Work(tt.args.ctx, tt.args.items)
 
 			if !reflect.DeepEqual(counter, tt.want) {
