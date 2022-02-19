@@ -20,7 +20,7 @@ func (d Download) Download(_ context.Context) {
 	log.Printf("dowloaded from %s successfuly\n", d.url)
 }
 
-func NewDownloader(url string) Download {
+func NewDownload(url string) Download {
 	return Download{
 		url: url,
 	}
@@ -28,16 +28,16 @@ func NewDownloader(url string) Download {
 
 func main() {
 	n := 20
-	items := make([]interface{}, n)
+	downloads := make([]Download, n)
 
 	for i := 0; i < n; i++ {
-		items[i] = NewDownloader(fmt.Sprintf("https://some-item.com?id=%d", i+1))
+		downloads[i] = NewDownload(fmt.Sprintf("https://some-item.com?id=%d", i+1))
 	}
 
-	workerFn := func(ctx context.Context, item interface{}) {
-		item.(Download).Download(ctx)
+	downloader := func(ctx context.Context, download Download) {
+		download.Download(ctx)
 	}
 
-	w := worker.New(workerFn, 5)
-	w.Work(context.Background(), items)
+	w := worker.New[Download](downloader, 5)
+	w.Work(context.Background(), downloads)
 }

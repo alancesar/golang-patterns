@@ -11,12 +11,12 @@ import (
 
 func TestWorker_Work(t *testing.T) {
 	type fields struct {
-		fn     func(counter *uint64) Fn
+		fn     func(counter *uint64) Fn[int]
 		buffer int
 	}
 	type args struct {
 		ctx     context.Context
-		items   []interface{}
+		items   []int
 		counter uint64
 	}
 	tests := []struct {
@@ -28,17 +28,17 @@ func TestWorker_Work(t *testing.T) {
 		{
 			name: "Should execute all jobs properly",
 			fields: fields{
-				fn: func(counter *uint64) Fn {
-					return func(ctx context.Context, input interface{}) {
+				fn: func(counter *uint64) Fn[int] {
+					return func(ctx context.Context, input int) {
 						atomic.AddUint64(counter, 1)
-						time.Sleep(time.Millisecond * time.Duration(input.(int)) * 100)
+						time.Sleep(time.Millisecond * time.Duration(input) * 100)
 					}
 				},
 				buffer: 2,
 			},
 			args: args{
 				ctx:     context.Background(),
-				items:   []interface{}{rand.Intn(50), rand.Intn(40), rand.Intn(30), rand.Intn(20), rand.Intn(10)},
+				items:   []int{rand.Intn(50), rand.Intn(40), rand.Intn(30), rand.Intn(20), rand.Intn(10)},
 				counter: 0,
 			},
 			want: 5,
@@ -47,7 +47,7 @@ func TestWorker_Work(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			counter := tt.args.counter
-			w := New(tt.fields.fn(&counter), tt.fields.buffer)
+			w := New[int](tt.fields.fn(&counter), tt.fields.buffer)
 			w.Work(tt.args.ctx, tt.args.items)
 
 			if !reflect.DeepEqual(counter, tt.want) {

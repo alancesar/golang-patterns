@@ -6,26 +6,26 @@ import (
 )
 
 type (
-	Fn func(context.Context, interface{})
+	Fn[T any] func(context.Context, T)
 
-	Worker struct {
-		fn     Fn
+	Worker[T any] struct {
+		fn     Fn[T]
 		buffer int
 	}
 )
 
-func New(workerFn Fn, bufferSize int) *Worker {
-	return &Worker{
+func New[T any](workerFn Fn[T], bufferSize int) *Worker[T] {
+	return &Worker[T]{
 		fn:     workerFn,
 		buffer: bufferSize,
 	}
 }
 
-func (w Worker) Work(ctx context.Context, items []interface{}) {
+func (w Worker[T]) Work(ctx context.Context, items []T) {
 	var wg sync.WaitGroup
 	wg.Add(len(items))
 
-	jobs := make(chan interface{})
+	jobs := make(chan T)
 
 	for i := 1; i <= w.buffer; i++ {
 		go func() {
