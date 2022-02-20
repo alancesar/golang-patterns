@@ -31,11 +31,13 @@ type (
 )
 
 func championshipGetter() (string, error) {
+	log.Println("getting championship")
 	sleep.Random()
 	return "Champions League", nil
 }
 
 func teamGetter(id int) (Team, error) {
+	log.Printf("getting team with id %d\n", id)
 	sleep.Random()
 	if id == 1 {
 		return Team{
@@ -51,6 +53,7 @@ func teamGetter(id int) (Team, error) {
 }
 
 func stadiumGetter() (Stadium, error) {
+	log.Println("getting stadium")
 	sleep.Random()
 	return Stadium{
 		Name:     "Wembley Stadium",
