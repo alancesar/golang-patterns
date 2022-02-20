@@ -1,111 +1,25 @@
 package fetcher
 
-import (
-	"sync"
-)
+import "sync"
 
 type (
-	incoming struct {
-		index   int
-		payload interface{}
-	}
-
-	ProducerFn func() (interface{}, error)
-	ConsumerFn func(interface{})
-
-	Fetcher struct {
-		producers []<-chan incoming
-		consumers []ConsumerFn
-		errChan   chan error
-	}
+	ProviderFn          func() (interface{}, error)
+	ProviderWithParamFn func(interface{}) (interface{}, error)
+	CallbackFn          func(target sync.Locker, source interface{}) error
 )
 
-func New() *Fetcher {
-	return &Fetcher{
-		errChan: make(chan error, 1),
-	}
-}
-
-func (f *Fetcher) With(producerFn ProducerFn, consumerFn ConsumerFn) *Fetcher {
-	producer := f.prepare(producerFn)
-	f.producers = append(f.producers, producer)
-	f.consumers = append(f.consumers, consumerFn)
-	return f
-}
-
-func (f Fetcher) Fetch(target sync.Locker) error {
-	var (
-		wg  sync.WaitGroup
-		err error
-	)
-
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		err = <-f.errChan
-	}()
-
-	go func() {
-		defer wg.Done()
-		consumers := f.fanIn(f.producers)
-		for input := range consumers {
-			f.safeMerge(target, input)
-		}
-	}()
-
-	wg.Wait()
-	return err
-}
-
-func (f Fetcher) safeMerge(target sync.Locker, incoming incoming) {
+func New(target sync.Locker, provider ProviderFn, callback CallbackFn) error {
 	defer target.Unlock()
+	source, err := provider()
+	if err != nil {
+		return err
+	}
 	target.Lock()
-	f.consumers[incoming.index](incoming.payload)
+	return callback(target, source)
 }
 
-func (f Fetcher) prepare(fn ProducerFn) <-chan incoming {
-	c := make(chan incoming)
-	index := len(f.producers)
-
-	go func() {
-		defer close(c)
-		payload, err := fn()
-		if err != nil {
-			f.errChan <- err
-			return
-		}
-
-		c <- incoming{
-			index:   index,
-			payload: payload,
-		}
-	}()
-
-	return c
-}
-
-func (f Fetcher) fanIn(producers []<-chan incoming) <-chan incoming {
-	var wg sync.WaitGroup
-	wg.Add(len(producers))
-	out := make(chan incoming)
-
-	fn := func(incoming <-chan incoming) {
-		for in := range incoming {
-			out <- in
-		}
-		wg.Done()
-	}
-
-	for _, c := range producers {
-		go fn(c)
-	}
-
-	go func() {
-		wg.Wait()
-		close(out)
-		close(f.errChan)
-	}()
-
-	return out
+func NewWithParam(target sync.Locker, param interface{}, provider ProviderWithParamFn, callback CallbackFn) error {
+	return New(target, func() (interface{}, error) {
+		return provider(param)
+	}, callback)
 }
