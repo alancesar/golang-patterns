@@ -62,28 +62,28 @@ func stadiumGetter() (Stadium, error) {
 func main() {
 	match := &Match{}
 	stadiumFetcher := func() error {
-		return newfetcher.Fetcher(match, stadiumGetter, func(match *Match, stadium Stadium) error {
+		return newfetcher.New(match, stadiumGetter, func(match *Match, stadium Stadium) error {
 			match.Stadium = stadium
 			return nil
 		})
 	}
 
 	championshipFetcher := func() error {
-		return newfetcher.Fetcher(match, championshipGetter, func(match *Match, championship string) error {
+		return newfetcher.New(match, championshipGetter, func(match *Match, championship string) error {
 			match.Championship = championship
 			return nil
 		})
 	}
 
 	homeTeamFetcher := func(id int) error {
-		return newfetcher.FetcherWithParam(match, id, teamGetter, func(match *Match, home Team) error {
+		return newfetcher.NewWithParam(match, id, teamGetter, func(match *Match, home Team) error {
 			match.Home = home
 			return nil
 		})
 	}
 
 	awayTeamFetcher := func(id int) error {
-		return newfetcher.FetcherWithParam(match, id, teamGetter, func(match *Match, away Team) error {
+		return newfetcher.NewWithParam(match, id, teamGetter, func(match *Match, away Team) error {
 			match.Away = away
 			return nil
 		})
