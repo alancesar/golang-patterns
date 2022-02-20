@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"golang-patterns/fetcher"
 	"golang-patterns/internal/sleep"
+	"golang.org/x/sync/errgroup"
 	"log"
 	"sync"
 )
@@ -59,34 +60,55 @@ func stadiumGetter() (Stadium, error) {
 }
 
 func main() {
-	var match Match
-
-	err := fetcher.New().
-		With(func() (interface{}, error) {
+	match := &Match{}
+	stadiumFetcher := func() error {
+		return fetcher.New(match, func() (interface{}, error) {
 			return stadiumGetter()
-		}, func(value interface{}) {
-			match.Stadium = value.(Stadium)
-		}).
-		With(func() (interface{}, error) {
-			return championshipGetter()
-		}, func(value interface{}) {
-			match.Championship = value.(string)
-		}).
-		With(func() (interface{}, error) {
-			return teamGetter(1)
-		}, func(value interface{}) {
-			match.Home = value.(Team)
-		}).
-		With(func() (interface{}, error) {
-			return teamGetter(2)
-		}, func(value interface{}) {
-			match.Away = value.(Team)
-		}).
-		Fetch(&match)
+		}, func(match sync.Locker, stadium interface{}) error {
+			match.(*Match).Stadium = stadium.(Stadium)
+			return nil
+		})
+	}
 
-	if err != nil {
+	championshipFetcher := func() error {
+		return fetcher.New(match, func() (interface{}, error) {
+			return championshipGetter()
+		}, func(match sync.Locker, championship interface{}) error {
+			match.(*Match).Championship = championship.(string)
+			return nil
+		})
+	}
+
+	homeTeamFetcher := func(id interface{}) error {
+		return fetcher.NewWithParam(match, id, func(id interface{}) (interface{}, error) {
+			return teamGetter(id.(int))
+		}, func(match sync.Locker, home interface{}) error {
+			match.(*Match).Home = home.(Team)
+			return nil
+		})
+	}
+
+	awayTeamFetcher := func(id interface{}) error {
+		return fetcher.NewWithParam(match, id, func(id interface{}) (interface{}, error) {
+			return teamGetter(id.(int))
+		}, func(match sync.Locker, away interface{}) error {
+			match.(*Match).Away = away.(Team)
+			return nil
+		})
+	}
+
+	var group errgroup.Group
+	group.Go(stadiumFetcher)
+	group.Go(championshipFetcher)
+	group.Go(func() error {
+		return homeTeamFetcher(1)
+	})
+	group.Go(func() error {
+		return awayTeamFetcher(2)
+	})
+	if err := group.Wait(); err != nil {
 		log.Fatalln(err)
 	}
 
-	fmt.Println(&match)
+	fmt.Println(match)
 }
