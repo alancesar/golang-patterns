@@ -65,37 +65,29 @@ func stadiumGetter() (Stadium, error) {
 func main() {
 	match := &Match{}
 	stadiumFetcher := func() error {
-		return fetcher.New(match, func() (interface{}, error) {
-			return stadiumGetter()
-		}, func(match sync.Locker, stadium interface{}) error {
-			match.(*Match).Stadium = stadium.(Stadium)
+		return fetcher.New(match, stadiumGetter, func(match *Match, stadium Stadium) error {
+			match.Stadium = stadium
 			return nil
 		})
 	}
 
 	championshipFetcher := func() error {
-		return fetcher.New(match, func() (interface{}, error) {
-			return championshipGetter()
-		}, func(match sync.Locker, championship interface{}) error {
-			match.(*Match).Championship = championship.(string)
+		return fetcher.New(match, championshipGetter, func(match *Match, championship string) error {
+			match.Championship = championship
 			return nil
 		})
 	}
 
-	homeTeamFetcher := func(id interface{}) error {
-		return fetcher.NewWithParam(match, id, func(id interface{}) (interface{}, error) {
-			return teamGetter(id.(int))
-		}, func(match sync.Locker, home interface{}) error {
-			match.(*Match).Home = home.(Team)
+	homeTeamFetcher := func(id int) error {
+		return fetcher.NewWithParam(match, id, teamGetter, func(match *Match, home Team) error {
+			match.Home = home
 			return nil
 		})
 	}
 
-	awayTeamFetcher := func(id interface{}) error {
-		return fetcher.NewWithParam(match, id, func(id interface{}) (interface{}, error) {
-			return teamGetter(id.(int))
-		}, func(match sync.Locker, away interface{}) error {
-			match.(*Match).Away = away.(Team)
+	awayTeamFetcher := func(id int) error {
+		return fetcher.NewWithParam(match, id, teamGetter, func(match *Match, away Team) error {
+			match.Away = away
 			return nil
 		})
 	}

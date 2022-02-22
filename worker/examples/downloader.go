@@ -28,14 +28,14 @@ func NewDownload(url string) Download {
 
 func main() {
 	n := 20
-	downloads := make([]interface{}, n)
+	downloads := make([]Download, n)
 
 	for i := 0; i < n; i++ {
 		downloads[i] = NewDownload(fmt.Sprintf("https://some-item.com?id=%d", i+1))
 	}
 
-	downloader := func(ctx context.Context, download interface{}) {
-		download.(Download).Download(ctx)
+	downloader := func(ctx context.Context, download Download) {
+		download.Download(ctx)
 	}
 
 	w := worker.New(downloader, 5)

@@ -3,12 +3,12 @@ package fetcher
 import "sync"
 
 type (
-	ProviderFn          func() (interface{}, error)
-	ProviderWithParamFn func(interface{}) (interface{}, error)
-	CallbackFn          func(target sync.Locker, source interface{}) error
+	ProviderFn[T any]                func() (T, error)
+	ProviderWithParamFn[T, K any]    func(T) (K, error)
+	CallbackFn[T sync.Locker, S any] func(target T, source S) error
 )
 
-func New(target sync.Locker, provider ProviderFn, callback CallbackFn) error {
+func New[T sync.Locker, K any](target T, provider ProviderFn[K], callback CallbackFn[T, K]) error {
 	defer target.Unlock()
 	source, err := provider()
 	if err != nil {
@@ -18,8 +18,8 @@ func New(target sync.Locker, provider ProviderFn, callback CallbackFn) error {
 	return callback(target, source)
 }
 
-func NewWithParam(target sync.Locker, param interface{}, provider ProviderWithParamFn, callback CallbackFn) error {
-	return New(target, func() (interface{}, error) {
+func NewWithParam[T sync.Locker, P any, S any](target T, param P, provider ProviderWithParamFn[P, S], callback CallbackFn[T, S]) error {
+	return New(target, func() (S, error) {
 		return provider(param)
 	}, callback)
 }
